@@ -9,61 +9,57 @@ import WidgetKit
 import SwiftUI
 import Intents
 
-struct Provider: IntentTimelineProvider {
-    func placeholder(in context: Context) -> SimpleEntry {
-        SimpleEntry(date: Date(), configuration: ConfigurationIntent())
+
+import Combine
+import Foundation
+
+struct FoodProvider: TimelineProvider {
+    
+    var foodVM = FoodListViewModel()
+    
+    func placeholder(in context: TimelineProvider.Context) -> FoodEntry {
+        FoodEntry(date: Date(), calorie: Double(foodVM.getDataCalories()))
     }
-
-    func getSnapshot(for configuration: ConfigurationIntent, in context: Context, completion: @escaping (SimpleEntry) -> ()) {
-        let entry = SimpleEntry(date: Date(), configuration: configuration)
-        completion(entry)
-    }
-
-    func getTimeline(for configuration: ConfigurationIntent, in context: Context, completion: @escaping (Timeline<Entry>) -> ()) {
-        var entries: [SimpleEntry] = []
-
-        // Generate a timeline consisting of five entries an hour apart, starting from the current date.
-        let currentDate = Date()
-        for hourOffset in 0 ..< 5 {
-            let entryDate = Calendar.current.date(byAdding: .hour, value: hourOffset, to: currentDate)!
-            let entry = SimpleEntry(date: entryDate, configuration: configuration)
-            entries.append(entry)
-        }
-
-        let timeline = Timeline(entries: entries, policy: .atEnd)
+    
+    func getTimeline(in context: Context, completion: @escaping (Timeline<FoodEntry>) -> Void) {
+        let date = Date()
+        let entry = FoodEntry(date: date, calorie: 110)
+        
+        let update = Calendar.current.date(byAdding: .minute, value: 15, to: date)
+        
+        let timeline = Timeline(entries: [entry], policy: .after(update!))
+        
         completion(timeline)
     }
-}
-
-struct SimpleEntry: TimelineEntry {
-    let date: Date
-    let configuration: ConfigurationIntent
-}
-
-struct WhatDidYouEat_WidgetEntryView : View {
-    var entry: Provider.Entry
-
-    var body: some View {
-        Text(entry.date, style: .time)
+    
+    func getSnapshot(in context: Context, completion: @escaping (FoodEntry) -> Void) {
+        let entry: FoodEntry
+        
+        entry = FoodEntry(date: Date(), calorie: 150)
+        
+        completion(entry)
     }
+    
+}
+
+struct FoodEntry: TimelineEntry {
+    var date =  Date()
+    var calorie: Double
 }
 
 @main
-struct WhatDidYouEat_Widget: Widget {
-    let kind: String = "WhatDidYouEat_Widget"
-
+struct widgetView: Widget {
+    init() {
+        @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    }
+    
     var body: some WidgetConfiguration {
-        IntentConfiguration(kind: kind, intent: ConfigurationIntent.self, provider: Provider()) { entry in
-            WhatDidYouEat_WidgetEntryView(entry: entry)
+        StaticConfiguration(kind: "com.chen.whatdidyoueatwidget", provider: FoodProvider()) { entry in
+            Text("test")
         }
-        .configurationDisplayName("My Widget")
-        .description("This is an example widget.")
+        .configurationDisplayName("What Did You Eat")
+        .description("Your daily intake")
+        .supportedFamilies([.systemSmall])
     }
 }
 
-struct WhatDidYouEat_Widget_Previews: PreviewProvider {
-    static var previews: some View {
-        WhatDidYouEat_WidgetEntryView(entry: SimpleEntry(date: Date(), configuration: ConfigurationIntent()))
-            .previewContext(WidgetPreviewContext(family: .systemSmall))
-    }
-}
